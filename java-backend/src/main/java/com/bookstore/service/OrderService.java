@@ -2,8 +2,11 @@ package com.bookstore.service;
 
 import com.bookstore.model.Order;
 import com.bookstore.model.Book;
+import com.bookstore.model.Customer;
 import com.bookstore.repository.OrderRepository;
 import com.bookstore.repository.BookRepository;
+import com.bookstore.service.CustomerService;
+import com.bookstore.util.PriorityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +27,9 @@ public class OrderService {
 
     @Autowired
     private BookRepository bookRepository;
+    
+    @Autowired
+    private CustomerService customerService;
 
     /**
      * Create a new order
@@ -42,6 +48,22 @@ public class OrderService {
         
         if (order.getPaymentStatus() == null) {
             order.setPaymentStatus("Pending");
+        }
+        
+        // Calculate and set priority based on customer membership level
+        try {
+            Optional<Customer> customerOpt = customerService.getCustomerById(order.getCustomerId());
+            if (customerOpt.isPresent()) {
+                Customer customer = customerOpt.get();
+                int priority = PriorityUtils.getMembershipPriority(customer.getMembershipLevel());
+                order.setPriority(priority);
+            } else {
+                // Default to lowest priority if customer not found
+                order.setPriority(1);
+            }
+        } catch (Exception e) {
+            // Default to lowest priority if there's an error
+            order.setPriority(1);
         }
         
         // Calculate totals

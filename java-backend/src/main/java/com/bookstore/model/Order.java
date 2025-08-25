@@ -76,6 +76,10 @@ public class Order {
     @LastModifiedDate
     private LocalDateTime updatedAt;
     
+    @Min(value = 1, message = "Priority must be at least 1")
+    @Max(value = 4, message = "Priority must be at most 4")
+    private Integer priority = 1; // Default to lowest priority (Bronze)
+
     // Nested classes
     public static class OrderItem {
         @NotBlank(message = "Book ID is required")
@@ -365,4 +369,7 @@ public class Order {
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    public Integer getPriority() { return priority; }
+    public void setPriority(Integer priority) { this.priority = priority; }
 }

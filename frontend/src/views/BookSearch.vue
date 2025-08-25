@@ -703,6 +703,21 @@ onMounted(() => {
   padding: 1.5rem;
 }
 
+/* Keep Advanced Filters button in hovered state permanently */
+.advanced-search-container .btn-outline-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.advanced-search-container .btn-outline-primary:hover,
+.advanced-search-container .btn-outline-primary:focus,
+.advanced-search-container .btn-outline-primary:active {
+  background-color: #0056b3;
+  border-color: #0056b3;
+  color: white;
+}
+
 .advanced-filters-panel {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 8px;

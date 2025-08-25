@@ -3,6 +3,9 @@ package com.bookstore.controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.bookstore.model.Order;
+import com.bookstore.service.OrderService;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -11,12 +14,19 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @RequestMapping("/data-structures")
 public class DataStructuresController {
 
+    @Autowired
+    private OrderService orderService;
+
     // In-memory storage for demonstration
     private Stack<String> stack = new Stack<>();
     private Queue<String> queue = new ConcurrentLinkedQueue<>();
     private Queue<String> circularQueue = new LinkedList<>();
     private Deque<String> deque = new ArrayDeque<>();
     private PriorityQueue<String> priorityQueue = new PriorityQueue<>();
+    // Order priority queue - orders with higher priority (higher numbers) come first
+    private PriorityQueue<Order> orderPriorityQueue = new PriorityQueue<>(
+        (o1, o2) -> Integer.compare(o2.getPriority(), o1.getPriority())
+    );
     private Map<String, String> hashMap = new HashMap<>();
     
     private int circularQueueCapacity = 5;
@@ -426,6 +436,100 @@ public class DataStructuresController {
         }
     }
 
+    // Order Priority Queue Operations
+    @PostMapping("/order-priority-queue/add")
+    public ResponseEntity<Map<String, Object>> orderPriorityQueueAdd(@RequestBody Map<String, Object> request) {
+        try {
+            String orderId = request.get("orderId").toString();
+            Optional<Order> orderOpt = orderService.getOrderById(orderId);
+            
+            if (!orderOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Order not found"
+                ));
+            }
+            
+            Order order = orderOpt.get();
+            long startTime = System.nanoTime();
+            orderPriorityQueue.offer(order);
+            long endTime = System.nanoTime();
+            
+            // Create a simplified view of the queue for response
+            List<Map<String, Object>> queueView = new ArrayList<>();
+            for (Order o : orderPriorityQueue) {
+                queueView.add(Map.of(
+                    "orderId", o.getId(),
+                    "orderNumber", o.getOrderNumber(),
+                    "priority", o.getPriority(),
+                    "customerId", o.getCustomerId(),
+                    "status", o.getStatus()
+                ));
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Order added to priority queue",
+                "queue", queueView,
+                "size", orderPriorityQueue.size(),
+                "executionTime", (endTime - startTime) / 1000.0 + " microseconds"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error adding order to priority queue: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/order-priority-queue/poll")
+    public ResponseEntity<Map<String, Object>> orderPriorityQueuePoll() {
+        try {
+            if (orderPriorityQueue.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Order priority queue is empty"
+                ));
+            }
+            
+            long startTime = System.nanoTime();
+            Order polledOrder = orderPriorityQueue.poll();
+            long endTime = System.nanoTime();
+            
+            // Create a simplified view of the remaining queue
+            List<Map<String, Object>> queueView = new ArrayList<>();
+            for (Order o : orderPriorityQueue) {
+                queueView.add(Map.of(
+                    "orderId", o.getId(),
+                    "orderNumber", o.getOrderNumber(),
+                    "priority", o.getPriority(),
+                    "customerId", o.getCustomerId(),
+                    "status", o.getStatus()
+                ));
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Order polled from priority queue",
+                "polledOrder", Map.of(
+                    "orderId", polledOrder.getId(),
+                    "orderNumber", polledOrder.getOrderNumber(),
+                    "priority", polledOrder.getPriority(),
+                    "customerId", polledOrder.getCustomerId(),
+                    "status", polledOrder.getStatus()
+                ),
+                "queue", queueView,
+                "size", orderPriorityQueue.size(),
+                "executionTime", (endTime - startTime) / 1000.0 + " microseconds"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error polling from order priority queue: " + e.getMessage()
+            ));
+        }
+    }
+
     // Hash Search Operations
     @PostMapping("/hash-search/put")
     public ResponseEntity<Map<String, Object>> hashSearchPut(@RequestBody Map<String, String> request) {
@@ -592,6 +696,22 @@ public class DataStructuresController {
             priorityQueueData.put("data", new ArrayList<>(priorityQueue));
             priorityQueueData.put("size", priorityQueue.size());
             data.put("priorityQueue", priorityQueueData);
+            
+            // Order priority queue data
+            Map<String, Object> orderPriorityQueueData = new HashMap<>();
+            List<Map<String, Object>> orderQueueView = new ArrayList<>();
+            for (Order o : orderPriorityQueue) {
+                orderQueueView.add(Map.of(
+                    "orderId", o.getId(),
+                    "orderNumber", o.getOrderNumber(),
+                    "priority", o.getPriority(),
+                    "customerId", o.getCustomerId(),
+                    "status", o.getStatus()
+                ));
+            }
+            orderPriorityQueueData.put("data", orderQueueView);
+            orderPriorityQueueData.put("size", orderPriorityQueue.size());
+            data.put("orderPriorityQueue", orderPriorityQueueData);
             
             Map<String, Object> hashMapData = new HashMap<>();
             hashMapData.put("data", hashMap);

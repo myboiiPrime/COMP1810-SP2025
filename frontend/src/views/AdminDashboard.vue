@@ -446,8 +446,8 @@
                             <button class="btn btn-sm btn-outline-primary me-1" @click="updateOrderStatus(order)">
                               <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" @click="deleteOrder(order)">
-                              <i class="fas fa-trash"></i>
+                            <button class="btn btn-sm btn-outline-warning" @click="deleteOrder(order)" title="Dequeue Order">
+                              <i class="fas fa-minus-circle"></i> Dequeue
                             </button>
                           </td>
                         </tr>
@@ -581,7 +581,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from 'vue'
-import { ordersAPI, analyticsAPI, booksAPI, customersAPI } from '../services/api'
+import { ordersAPI, analyticsAPI, booksAPI, customersAPI, dataStructuresAPI } from '../services/api'
 
 // Reactive data
 const stats = reactive({
@@ -721,20 +721,33 @@ const updateOrderStatus = (order) => {
 }
 
 const deleteOrder = async (order) => {
-  if (confirm(`Are you sure you want to cancel order #${order.id}?\n\nCustomer: ${order.customerName}\nTotal: $${order.totalAmount}\n\nThis will cancel the order and cannot be undone.`)) {
+  if (confirm(`Are you sure you want to remove order #${order.id} from the processing queue?\n\nCustomer: ${order.customerName}\nTotal: $${order.totalAmount}\n\nThis will dequeue the order from the processing system.`)) {
     try {
-      // Call the API to cancel the order (which is the proper way to "delete" orders)
-      await ordersAPI.cancel(order.id)
+      // First, add the order to the queue if it's not already there
+      await dataStructuresAPI.queueEnqueue(JSON.stringify({
+        orderId: order.id,
+        customerName: order.customerName,
+        totalAmount: order.totalAmount,
+        status: order.status
+      }))
       
-      // Update order status in local array after successful API call
-      const orderIndex = orders.value.findIndex(o => o.id === order.id)
-      if (orderIndex !== -1) {
-        orders.value[orderIndex].status = 'cancelled'
+      // Then dequeue it to demonstrate the dequeue operation
+      const dequeueResponse = await dataStructuresAPI.queueDequeue()
+      
+      if (dequeueResponse.data.success) {
+        // Update order status in local array after successful dequeue
+        const orderIndex = orders.value.findIndex(o => o.id === order.id)
+        if (orderIndex !== -1) {
+          orders.value[orderIndex].status = 'dequeued'
+        }
+        
+        alert(`Order #${order.id} has been successfully dequeued from the processing system.\n\nDequeued data: ${dequeueResponse.data.dequeuedValue}\nExecution time: ${dequeueResponse.data.executionTime}`)
+      } else {
+        alert('Failed to dequeue order: ' + dequeueResponse.data.message)
       }
-      alert(`Order #${order.id} has been cancelled successfully.`)
     } catch (error) {
-      console.error('Failed to cancel order:', error)
-      alert('Failed to cancel order. Please try again.')
+      console.error('Failed to dequeue order:', error)
+      alert('Failed to dequeue order. Please try again.')
     }
   }
 }
